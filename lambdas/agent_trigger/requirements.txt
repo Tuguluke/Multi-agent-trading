@@ -1,0 +1,13 @@
+groq>=0.9.0
+boto3>=1.34.0
+yfinance>=0.2.40
+fredapi>=0.5.2
+newsapi-python>=0.2.7
+praw>=7.7.1
+entsoe-py>=0.6.9
+pandas>=2.2.0
+numpy>=1.26.0
+ta>=0.11.0
+pydantic>=2.7.0
+python-dotenv>=1.0.0
+requests>=2.31.0
