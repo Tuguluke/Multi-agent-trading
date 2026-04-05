@@ -70,6 +70,15 @@ class MonitoringStack(cdk.Stack):
                 statistic=stat,
             )
 
+        # X-Ray service map link (text widget)
+        xray_url = (
+            f"https://{self.region}.console.aws.amazon.com/xray/home#/service-map"
+        )
+        sfn_url = (
+            f"https://{self.region}.console.aws.amazon.com/states/home"
+            f"#/statemachines"
+        )
+
         dashboard.add_widgets(
             cw.GraphWidget(
                 title="Agent Latency (p50 / p95)",
@@ -89,8 +98,11 @@ class MonitoringStack(cdk.Stack):
                 width=12,
             ),
             cw.GraphWidget(
-                title="LLM Call Latency",
-                left=[_metric("LLMCallLatencyMs", "p50"), _metric("LLMCallLatencyMs", "p95")],
+                title="LLM Call Latency by Provider",
+                left=[
+                    _metric("LLMCallLatencyMs", "p50"),
+                    _metric("LLMCallLatencyMs", "p95"),
+                ],
                 width=12,
             ),
             cw.GraphWidget(
@@ -100,6 +112,49 @@ class MonitoringStack(cdk.Stack):
                     _metric("IngestionFailures", "Sum"),
                 ],
                 width=12,
+            ),
+            # Step Functions execution metrics (built-in namespace)
+            cw.GraphWidget(
+                title="Step Functions: Executions",
+                left=[
+                    cw.Metric(
+                        namespace="AWS/States",
+                        metric_name="ExecutionsStarted",
+                        dimensions_map={"StateMachineArn": "*"},
+                        period=cdk.Duration.minutes(15),
+                        statistic="Sum",
+                    ),
+                    cw.Metric(
+                        namespace="AWS/States",
+                        metric_name="ExecutionsFailed",
+                        dimensions_map={"StateMachineArn": "*"},
+                        period=cdk.Duration.minutes(15),
+                        statistic="Sum",
+                    ),
+                ],
+                width=12,
+            ),
+            # Lambda concurrency + errors
+            cw.GraphWidget(
+                title="Lambda Errors",
+                left=[
+                    cw.Metric(
+                        namespace="AWS/Lambda",
+                        metric_name="Errors",
+                        period=cdk.Duration.minutes(15),
+                        statistic="Sum",
+                    ),
+                ],
+                width=12,
+            ),
+            cw.TextWidget(
+                markdown=(
+                    "## Quick Links\n"
+                    f"- [X-Ray Service Map]({xray_url}) — distributed trace view\n"
+                    f"- [Step Functions]({sfn_url}) — pipeline execution graph\n"
+                ),
+                width=24,
+                height=3,
             ),
         )
 

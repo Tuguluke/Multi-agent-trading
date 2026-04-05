@@ -26,6 +26,9 @@ class LLMRouter:
         if cfg.LLM_PROVIDER == "ollama":
             from llm.ollama_client import OllamaClient
             return OllamaClient()
+        if cfg.LLM_PROVIDER == "bedrock":
+            from llm.bedrock_client import BedrockClient
+            return BedrockClient()
         from llm.groq_client import GroqClient
         return GroqClient()
 

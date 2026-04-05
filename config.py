@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from functools import lru_cache
@@ -25,15 +24,13 @@ class Config:
     AWS_ENDPOINT_URL: Optional[str] = os.getenv("AWS_ENDPOINT_URL")  # LocalStack
 
     # ── LLM ──────────────────────────────────────────────────────────────────
-    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "groq")
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "groq")   # groq | ollama | bedrock
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
+    BEDROCK_MODEL: str = os.getenv("BEDROCK_MODEL", "meta.llama3-8b-instruct-v1:0")
 
-    # Groq keys — comma-separated in .env; in AWS fetched from Secrets Manager
-    GROQ_KEYS_SECRET_NAME: str = os.getenv(
-        "GROQ_KEYS_SECRET_NAME", "energy-trading/groq-keys"
-    )
+    # Groq keys — comma-separated in .env; in AWS injected from SSM via Lambda env var
     _groq_api_keys: Optional[list[str]] = None
 
     # ── AWS Resource Names ────────────────────────────────────────────────────
@@ -64,25 +61,34 @@ class Config:
 
     # ── Groq Key Management ───────────────────────────────────────────────────
     def get_groq_keys(self) -> list[str]:
-        """Return Groq API keys. Local: reads env var. AWS: fetches from Secrets Manager."""
+        """Return Groq API keys.
+        Local: reads GROQ_API_KEYS env var (comma-separated).
+        AWS Lambda: keys are injected as env var from SSM at deploy time (free tier).
+        """
         if self._groq_api_keys:
             return self._groq_api_keys
 
-        # Local / dev — comma-separated env var
+        # Env var works in both local and Lambda (CDK injects SSM value as env var)
         env_keys = os.getenv("GROQ_API_KEYS", "")
         if env_keys:
             self._groq_api_keys = [k.strip() for k in env_keys.split(",") if k.strip()]
             return self._groq_api_keys
 
-        # AWS — Secrets Manager
-        try:
-            client = self._boto_client("secretsmanager")
-            response = client.get_secret_value(SecretId=self.GROQ_KEYS_SECRET_NAME)
-            self._groq_api_keys = json.loads(response["SecretString"])
-            return self._groq_api_keys
-        except Exception as e:
-            logger.warning("Could not fetch Groq keys from Secrets Manager: %s", e)
-            return []
+        # Fallback: read from SSM directly (avoids Secrets Manager cost)
+        if self.ENVIRONMENT != "local":
+            try:
+                client = self._boto_client("ssm")
+                response = client.get_parameter(
+                    Name="/energy-trading/groq-api-keys",
+                    WithDecryption=True,
+                )
+                raw = response["Parameter"]["Value"]
+                self._groq_api_keys = [k.strip() for k in raw.split(",") if k.strip()]
+                return self._groq_api_keys
+            except Exception as e:
+                logger.warning("Could not fetch Groq keys from SSM: %s", e)
+
+        return []
 
     def _boto_client(self, service: str):
         kwargs: dict = {"region_name": self.AWS_REGION}

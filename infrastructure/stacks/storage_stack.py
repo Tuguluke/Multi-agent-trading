@@ -45,7 +45,9 @@ class StorageStack(cdk.Stack):
         table_config = {
             "billing_mode": dynamodb.BillingMode.PAY_PER_REQUEST,
             "removal_policy": RemovalPolicy.RETAIN,
-            "point_in_time_recovery": True,
+            "point_in_time_recovery_specification": dynamodb.PointInTimeRecoverySpecification(
+                point_in_time_recovery_enabled=True,
+            ),
         }
 
         self.market_snapshots = dynamodb.Table(

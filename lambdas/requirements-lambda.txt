@@ -1,6 +1,6 @@
+# Lambda-only requirements — excludes boto3 (pre-installed in Python 3.12 runtime)
+# and excludes UI/dev/infra packages not needed in Lambda.
 groq>=0.9.0
-boto3>=1.34.0
-aws-xray-sdk>=2.12.0
 yfinance>=0.2.40
 fredapi>=0.5.2
 newsapi-python>=0.2.7
@@ -12,3 +12,4 @@ ta>=0.11.0
 pydantic>=2.7.0
 python-dotenv>=1.0.0
 requests>=2.31.0
+aws-xray-sdk>=2.12.0
